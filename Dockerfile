@@ -4,27 +4,36 @@ RUN yum -y install tar gzip zlib git \
         gcc gcc-c++ \
         zlib-devel \
         sudo \
+        mesa-libGL \
+        python3-opencv \
         build-essential cmake pkg-config make \
-        boost-devel
+        boost-devel && \
+	yum clean all
 
 COPY requirements.txt ./
 
 RUN pip uninstall -y six
 RUN python3.8 -m pip install -r requirements.txt
 
+ENV DEEPFACE_HOME /app
+
 RUN mkdir -p /app
+RUN mkdir -p /app/.deepface/weights
+
+RUN curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/facial_expression_model_weights.h5 -o /app/.deepface/weights/facial_expression_model_weights.h5
+RUN curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/age_model_weights.h5 -o /app/.deepface/weights/age_model_weights.h5
+RUN curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/gender_model_weights.h5 -o /app/.deepface/weights/gender_model_weights.h5
 
 COPY api/ /app/api
 COPY deepface/ /app/deepface
 COPY setup.py /app
 COPY wsgi.py /app
+COPY .serverless-wsgi /app
 COPY entry.sh /app
 
-RUN mkdir -p ~/.deepface/weights
-
-RUN curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/facial_expression_model_weights.h5 -o ~/.deepface/weights/facial_expression_model_weights.h5
-RUN curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/age_model_weights.h5 -o ~/.deepface/weights/age_model_weights.h5
-RUN curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/gender_model_weights.h5 -o ~/.deepface/weights/gender_model_weights.h5
+RUN pip install \
+    --target /app \
+        awslambdaric
 
 RUN git config --global advice.detachedHead false
 RUN git clone https://github.com/logandk/serverless-wsgi /app/serverless-wsgi
