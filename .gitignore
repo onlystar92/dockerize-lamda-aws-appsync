@@ -8,6 +8,7 @@ Pipfile.lock
 .mypy_cache/
 .vscode/
 .idea/
+.serverless/
 node_modules/
 deepface.egg-info/
 deepface/__pycache__/*
@@ -17,5 +18,6 @@ deepface/extendedmodels/__pycache__/*
 deepface/subsidiarymodels/__pycache__/*
 deepface/detectors/__pycache__/*
 tests/dataset/*.pkl
+__pycache__/
 .DS_Store
 deepface/.DS_Store

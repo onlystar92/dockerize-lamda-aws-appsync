@@ -3,9 +3,22 @@ service: deepface-lambda-service
 provider:
   name: aws
   stage: dev
+  region: us-east-1
   timeout: 300
   memorySize: 6144
 
-plugins:
-  - serverless-wsgi
-  - serverless-python-requirements
+functions:
+  deepface-analyze:
+    image:
+      uri: 346186097414.dkr.ecr.us-east-1.amazonaws.com/deepface-lambda:latest
+    name: ${sls:stage}-analyze
+    memorySize: 6144
+    timeout: 300
+    events:
+      - http:
+          path: analyze
+          method: post
+          cors: true
+          response:
+            headers:
+              Content-Type: "'application/json'"
