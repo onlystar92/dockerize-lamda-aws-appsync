@@ -1,11 +1,38 @@
 service: deepface-lambda-service
-
+  
 provider:
   name: aws
+  runtime: nodejs14.x
   stage: dev
-  region: us-east-1
   timeout: 300
   memorySize: 6144
+  region: ${file(./config.json):REGION}
+  lambdaHashingVersion: 20201221
+
+  environment:
+    REGION: ${file(./config.json):REGION}
+    S3_UPLOADS_BUCKET_NAME: ${file(./config.json):S3_UPLOADS_BUCKET_NAME}
+    S3_KEYFRAME_BUCKET_NAME: ${file(./config.json):S3_KEYFRAME_BUCKET_NAME}
+    LAMBDA_AWS_ACCESS_KEY: ${file(./config.json):AWS_ACCESS_KEY}
+    LAMBDA_AWS_SECRET_KEY: ${file(./config.json):AWS_SECRET_KEY}
+    HOSTNAME: ${file(./config.json):POSTGRE_HOSTNAME}
+    USERNAME: ${file(./config.json):POSTGRE_USERNAME}
+    DATABASE: ${file(./config.json):POSTGRE_DATABASE}
+    PASSWORD: ${file(./config.json):POSTGRE_PASSWORD}
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "s3:*"
+      Resource:
+        - "arn:aws:s3:::${self:provider.environment.S3_UPLOADS_BUCKET_NAME}/*"
+        - "arn:aws:s3:::${self:provider.environment.S3_KEYFRAME_BUCKET_NAME}/*"
+    - Effect: "Allow"
+      Action:
+        - "s3:*"
+      Resource:
+        - "arn:aws:s3:::${self:provider.environment.S3_UPLOADS_BUCKET_NAME}"
+        - "arn:aws:s3:::${self:provider.environment.S3_KEYFRAME_BUCKET_NAME}"
 
 functions:
   deepface-analyze:
@@ -22,3 +49,103 @@ functions:
           response:
             headers:
               Content-Type: "'application/json'"
+  
+  get-presign-url:
+    handler: handlers/upload.get_presign_url_handler
+    environment:
+      file_s3_bucket_name: ${self:provider.environment.S3_UPLOADS_BUCKET_NAME}
+      aws_access_key: ${self:provider.environment.LAMBDA_AWS_ACCESS_KEY}
+      aws_secret_key: ${self:provider.environment.LAMBDA_AWS_SECRET_KEY}
+    events:
+      - http:
+          path: upload
+          method: post
+          cors: true
+
+  get-video-list:
+    handler: handlers/list.get_video_list_handler
+    environment:
+      keyframe_s3_bucket_name: ${self:provider.environment.S3_KEYFRAME_BUCKET_NAME}
+    events:
+      - http:
+          path: list
+          method: get
+          cors: true
+
+  get-keyframe-list:
+    handler: handlers/list.get_keyframe_list_handler
+    environment:
+      keyframe_s3_bucket_name: ${self:provider.environment.S3_KEYFRAME_BUCKET_NAME}
+      region: ${self:provider.environment.REGION}
+      hostname: ${self:provider.environment.HOSTNAME}
+      username: ${self:provider.environment.USERNAME}
+      database: ${self:provider.environment.DATABASE}
+      password: ${self:provider.environment.PASSWORD}
+    events:
+      - http:
+          path: list/{key}
+          method: get
+          cors: true
+
+  extract-keyframe:
+    handler: handlers/extract.handler
+    environment:
+      file_s3_bucket_name: ${self:provider.environment.S3_UPLOADS_BUCKET_NAME}
+      keyframe_s3_bucket_name: ${self:provider.environment.S3_KEYFRAME_BUCKET_NAME}
+    events:
+      - s3:
+          bucket: ${self:provider.environment.S3_UPLOADS_BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .mp4
+          existing: true
+      - s3:
+          bucket: ${self:provider.environment.S3_UPLOADS_BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .mov
+          existing: true
+    layers:
+      - { Ref: FfmpegLambdaLayer }
+
+  detect-keyframe:
+    handler: handlers/detect.handler
+    environment:
+      keyframe_s3_bucket_name: ${self:provider.environment.S3_KEYFRAME_BUCKET_NAME}
+      aws_access_key: ${self:provider.environment.LAMBDA_AWS_ACCESS_KEY}
+      aws_secret_key: ${self:provider.environment.LAMBDA_AWS_SECRET_KEY}
+      region: ${self:provider.environment.REGION}
+      hostname: ${self:provider.environment.HOSTNAME}
+      username: ${self:provider.environment.USERNAME}
+      database: ${self:provider.environment.DATABASE}
+      password: ${self:provider.environment.PASSWORD}
+    events:
+      - s3:
+          bucket: ${self:provider.environment.S3_KEYFRAME_BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .jpg
+          existing: true
+
+resources:
+  Resources:
+    NewResource:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.S3_UPLOADS_BUCKET_NAME}
+    KeyFrameResource:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.S3_KEYFRAME_BUCKET_NAME}
+
+layers:
+  ffmpeg:
+    path: layer
+
+plugins:
+  - serverless-apigw-binary
+
+custom:
+  apigwBinary:
+    types:
+      - "multipart/form-data"
