@@ -30,6 +30,11 @@ COPY wsgi.py ${LAMBDA_TASK_ROOT}
 COPY .serverless-wsgi ${LAMBDA_TASK_ROOT}
 COPY entry.sh ${LAMBDA_TASK_ROOT}
 COPY app.py ${LAMBDA_TASK_ROOT}
+COPY classify.py ${LAMBDA_TASK_ROOT}
+COPY classify_nsfw.py ${LAMBDA_TASK_ROOT}
+COPY model.py ${LAMBDA_TASK_ROOT}
+COPY image_utils.py ${LAMBDA_TASK_ROOT}
+COPY data/ ${LAMBDA_TASK_ROOT}/data
 
 RUN pip install --target ${LAMBDA_TASK_ROOT} awslambdaric
 

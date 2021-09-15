@@ -38,12 +38,26 @@ functions:
   deepface-analyze:
     image:
       uri: 346186097414.dkr.ecr.us-east-1.amazonaws.com/deepface-lambda:latest
-    name: ${sls:stage}-analyze
     memorySize: 6144
     timeout: 300
     events:
       - http:
           path: analyze
+          method: post
+          cors: true
+          response:
+            headers:
+              Content-Type: "'application/json'"
+
+  classify-nsfw:
+    image:
+      uri: 346186097414.dkr.ecr.us-east-1.amazonaws.com/deepface-lambda:latest
+      command: classify.handler
+    memorySize: 6144
+    timeout: 300
+    events:
+      - http:
+          path: classify
           method: post
           cors: true
           response:

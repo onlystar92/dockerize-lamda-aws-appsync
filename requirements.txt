@@ -15,3 +15,5 @@ awslambdaric
 werkzeug
 tensorflow==2.4.0
 tensorflow_hub==0.11
+scikit-image
+requests-toolbelt
